@@ -18,17 +18,17 @@ def sumplots(meanchanceotherway, devchanceotherway, meanstepssurvived,devstepssu
     """    
     figure, axis = plt.subplots(2, 2)
     x=np.linspace(0,len(meanchanceotherway[0]),len(meanchanceotherway[0]))
-    axis[0,0].plot(x,meanchanceotherway[0], label='Stay put')
-    axis[0,0].plot(x,meanchanceotherway[1], label='Move up')
-    axis[0,0].plot(x,meanchanceotherway[2], label='Move right')
-    axis[0,0].plot(x,meanchanceotherway[3], label='Move down')
-    axis[0,0].plot(x,meanchanceotherway[4], label='Move left')
+    axis[0,0].plot(x,meanchanceotherway[0], label='Stay put', color='Black')
+    axis[0,0].plot(x,meanchanceotherway[1], label='Move up', color='Red')
+    axis[0,0].plot(x,meanchanceotherway[2], label='Move right', color='Purple')
+    axis[0,0].plot(x,meanchanceotherway[3], label='Move down', color='Blue')
+    axis[0,0].plot(x,meanchanceotherway[4], label='Move left', color='Yellow')
 
-    axis[0,1].plot(x,devchanceotherway[0], label='Stay put')
-    axis[0,1].plot(x,devchanceotherway[1], label='Move up')
-    axis[0,1].plot(x,devchanceotherway[2], label='Move right')
-    axis[0,1].plot(x,devchanceotherway[3], label='Move down')
-    axis[0,1].plot(x,devchanceotherway[4], label='Move left')
+    axis[0,1].plot(x,devchanceotherway[0], label='Stay put', color='Black')
+    axis[0,1].plot(x,devchanceotherway[1], label='Move up', color='Red')
+    axis[0,1].plot(x,devchanceotherway[2], label='Move right', color='Purple')
+    axis[0,1].plot(x,devchanceotherway[3], label='Move down', color='Blue')
+    axis[0,1].plot(x,devchanceotherway[4], label='Move left', color='Yellow')
 
     #convert to array for subtraction
     meanstepssurvived=np.array(meanstepssurvived)
@@ -53,8 +53,8 @@ def sumplots(meanchanceotherway, devchanceotherway, meanstepssurvived,devstepssu
     axis[1,1].set_ylabel('Number of Creatures')
     axis[1,1].set_title('Number of Creatures')
 
-    axis[0,0].legend()
-    axis[0,1].legend()
-    axis[1,0].legend()
-    axis[1,1].legend()
+    axis[0,0].legend(fontsize='x-small')
+    axis[0,1].legend(fontsize='x-small')
+    axis[1,0].legend(fontsize='x-small')
+    axis[1,1].legend(fontsize='x-small')
     return axis
