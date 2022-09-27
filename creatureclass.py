@@ -7,7 +7,7 @@ class Creat:
     creatnum (int): Which number creature it is
     amplitude (int): How much the creature will move when it moves
     """
-    def __init__(self, creatnum, amplitude):
+    def __init__(self, creatnum):
         """
         SUMMARY
         This constructs the object, sets the creature as Alive, sets its position as the origin, and initializes lists.
@@ -17,13 +17,16 @@ class Creat:
         amplitude (int): How much the creature will move when it moves
         """
         self.creatnum=creatnum
-        self.amplitude=amplitude
+        self.amplitude=1
+        self.visionstrength=0
+        self.chancetoreact=0
         self.alive=True
         self.life=['Alive']
         self.weights=[]
         #These track where the creature has moved each step.
         self.xtrack=[0]
         self.ytrack=[0]
+
     def chances(self, weight):
         """
         SUMMARY

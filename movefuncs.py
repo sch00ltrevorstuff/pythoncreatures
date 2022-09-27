@@ -1,4 +1,4 @@
-import numpy as np
+from numpy.random import choice
 
 #no movement
 def nochange(amplitude, xpos, ypos):
@@ -101,5 +101,5 @@ def funcchoose(chances):
     """
     #normalizes
     prob=[i/sum(chances) for i in chances]
-    fchoice=np.random.choice(funclist, p=prob)
+    fchoice=choice(funclist, p=prob)
     return fchoice

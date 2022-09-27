@@ -1,15 +1,16 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
-from matplotlib.collections import PolyCollection
 import movefuncs as mf
 import creatureclass as crc
 import passon as po
 import plotfuncs as pf
 import checksurvivearea as csa
+import sight
 
-def movementsimfunc(maxx=30,minx=-30,maxy=30,miny=-30,startcreatnum=1,steps=300,generations=21,mutationrate=.25,reproductionrate=2,
-                    graphcheck=5,startingchance=[.2,.2,.2,.2,.2],amplitude=1, creatcap=1000000):
+def movementsimfunc(maxx=30,minx=-30,maxy=30,miny=-30,startcreatnum=1,steps=300,generations=21,mutationrate=.15,reproductionrate=2,
+                    graphcheck=5,startingchance=[.2,.2,.2,.2,.2],startingamplitude=1,startingvisionstrength=0,
+                    startingchancetoreact=0, creatcap=1000000):
     """
     SUMMARY
     This is the main function of the simulation. Running it will run the simulation, create gifs of generations, and create summary plots.
@@ -29,25 +30,21 @@ def movementsimfunc(maxx=30,minx=-30,maxy=30,miny=-30,startcreatnum=1,steps=300,
     amplitude (int): How far the creature will move if it moves
     creatcap (int): Maxium nummber of creatures allowed.
     """
-    #initialize lists
     creatnum=startcreatnum
-    creatures=[]
-    meanchances=[]
-    devchances=[]
-    meanstepssurvived=[]
-    devstepssurvived=[]
-    numberofcreats=[]
-    chances=[] #list of lists of weights for the creatures
+    #initialize lists
+    creatures, meanchances,meanstepssurvived,devstepssurvived,meanamp,meanvs,meanctr,numberofcreats=[],[],[],[],[],[],[],[]
+    #list of lists of weights for the creatures
+    chances=[startingchance for _ in range(startcreatnum)]
+    amps=[startingamplitude for _ in range(startcreatnum)]
+    vss=[startingvisionstrength for _ in range(startcreatnum)]
+    ctrs=[startingchancetoreact for _ in range(startcreatnum)]
     #adds death zones
-    verts=[[[30,20],[20,20],[20,30],[30,30]],[[-30,-20],[-20,-20],[-20,-30],[-30,-30]]]
-
-    for i in range(startcreatnum):
-        chances.append(startingchance)
-
+    #verts=[[[30,20],[20,20],[20,30],[30,30]],[[-30,-20],[-20,-20],[-20,-30],[-30,-30]],[[-10,-10],[10,-10],[10,10],[-10,10],[-8,8],[8,8],[8,-8],[-8,-8]],[[-15,20], [-13, 20],[-13,-20],[-15,-20]]]
+    verts=[[[30,30],[29,30],[30,29]]]
 
     for g in range(generations):
         print('------------------------------------------------------------------------------------------------------------')
-        print("Now starting generation " + str(g) + " with estimated time to finish " + str(int(creatnum*.025*(steps/300))) + " seconds.")
+        print("".join(["Now starting generation ", str(g), " with estimated time to finish ", str(int(creatnum*.025*(steps/300))), " seconds."]))
         gensurvivors=creatnum
 
         numberofcreats.append(creatnum)
@@ -59,10 +56,13 @@ def movementsimfunc(maxx=30,minx=-30,maxy=30,miny=-30,startcreatnum=1,steps=300,
         validpoints=csa.validzones(maxx, minx, maxy, miny, invalidpoints)
 
         for c in range(creatnum):
-            #creates list of objects of class Creat and gives number and amplitude
-            creatures.append(crc.Creat(c, amplitude))
-            #assigns weights to the creatures
+            #creates list of objects of class Creat and gives number
+            creatures.append(crc.Creat(c))
+            #assigns weights and traits to the creatures
             creatures[c].chances(weight=chances[c])
+            creatures[c].amplitude=amps[c]
+            creatures[c].visionstrength=vss[c]
+            creatures[c].chancetoreact=ctrs[c]
 
             stepssurvived.append(0)
 
@@ -70,10 +70,13 @@ def movementsimfunc(maxx=30,minx=-30,maxy=30,miny=-30,startcreatnum=1,steps=300,
                     #start step at last step's last position
                     xpos=creatures[c].xtrack[s]
                     ypos=creatures[c].ytrack[s]
-                    #if still alive, if death stays put
+                    #if still alive, if dead stays put
                     if creatures[c].alive==True:
                         #assigns weights and chooses move function
-                        movefunc=mf.funcchoose(creatures[c].weights)(amplitude, xpos, ypos)
+                        #using vision strength to look for danger, then react
+                        detections=sight.looking(creatures[c].visionstrength,xpos,ypos,maxx,minx,maxy,miny,validpoints)
+                        reactweights=sight.react(creatures[c].chancetoreact,creatures[c].weights, detections, xpos, ypos,maxx,minx,maxy,miny)
+                        movefunc=mf.funcchoose(reactweights)(creatures[c].amplitude, xpos, ypos)
                         #the point to check if allowed
                         pointcheck=[movefunc[0], movefunc[1]]
                         #checks if went to not allowed point, if so then dies and stays put, else then move
@@ -92,19 +95,20 @@ def movementsimfunc(maxx=30,minx=-30,maxy=30,miny=-30,startcreatnum=1,steps=300,
                         creatures[c].changex(xpos)
                         creatures[c].changey(ypos)
 
-        print('The average weights for generation ' + str(g) + ' are ' + str(np.mean(chances, axis=0)))
-        print('The standard deviation is ' + str(np.std(chances, axis=0)))
-        print('Survivors of this generation: ' + str(gensurvivors) + '/' + str(creatnum))
+        print("".join(["The average weights for generation ", str(g), " are ", str(np.mean(chances, axis=0))]))
+        print("".join(["The average weights for generation ", str(g), " are Amp: ", str(np.mean(amps)), " VS: ", str(np.mean(vss)), " CTR: ", str(np.mean(ctrs))]))
+        print("".join(["Survivors of this generation: ", str(gensurvivors), "/", str(creatnum)]))
         print('------------------------------------------------------------------------------------------------------------')
         meanchances.append(np.mean(chances, axis=0))
-        devchances.append(np.std(chances, axis=0))
-
-        meanstepssurvived.append(np.mean(stepssurvived, axis=0))
-        devstepssurvived.append(np.std(stepssurvived, axis=0))
+        meanstepssurvived.append(np.mean(stepssurvived))
+        devstepssurvived.append(np.std(stepssurvived))
+        meanamp.append(np.mean(amps))
+        meanvs.append(np.mean(vss))
+        meanctr.append(np.mean(ctrs))
 
         if (g%graphcheck==0 or g==generations-1) and creatnum<50 and creatnum>0 and g!=0:
             print('------------------------------------------------------------------------------------------------------------')
-            print("Now animating generation " + str(g) + " with estimated time to finish " + str(int(15+creatnum*(steps/300))) + " seconds.")
+            print("".join(["Now animating generation ", str(g), " with estimated time to finish ", str(int(15+creatnum*(steps/300))), " seconds."]))
             print('------------------------------------------------------------------------------------------------------------')
 
             fig = plt.figure()
@@ -128,23 +132,14 @@ def movementsimfunc(maxx=30,minx=-30,maxy=30,miny=-30,startcreatnum=1,steps=300,
                     txts_creaturesstatus[c].set_text(str(c)+': '+ str(creatures[c].life[i]))
                     lines[c].set_label(c)
                     #color based on traits, probably not right but it yields good enough results
-                    stay=creatures[c].weights[0] #more likely to go up, the more red
-                    up=creatures[c].weights[1] #more likely to go up, the more red
-                    right=creatures[c].weights[2] #more likely to go right, the more purple
-                    down=creatures[c].weights[3] #more likely to go down, the more cyan
-                    left=creatures[c].weights[4] #more likely to go left, the more yellow
-                    #R=(2*up+.5*right+.5*left-2*down)
+                    stay=creatures[c].weights[0]
+                    up=creatures[c].weights[1]
+                    right=creatures[c].weights[2]
+                    down=creatures[c].weights[3]
+                    left=creatures[c].weights[4]
                     R=(up-down+1)/2 #more likely to go up, the more red
-                    #if R<0: R=0
-                    #if R>1: R=1
-                    #G=(.5*down+2*left-.5*up-.5*right)
                     G=(right-left+1)/2 #more likely to go right, the more green
-                    #if G<0: G=0
-                    #if G>1: G=1
-                    #B=(2*down+.5*right+.5*left-2*up)
                     B=stay #more likely to stay, the more blue
-                    #if B<0: B=0
-                    #if B>1: B=1
                     lines[c].set_color((R,G,B))
                     lines[c].set_data(creatures[c].xtrack[:i], creatures[c].ytrack[:i])
                 plt.legend()
@@ -154,34 +149,48 @@ def movementsimfunc(maxx=30,minx=-30,maxy=30,miny=-30,startcreatnum=1,steps=300,
 
         #get new chances from surviving creats
         allnewchances=[]
+        allnewamps=[]
+        allnewvss=[]
+        allnewctrs=[]
         for c in creatures:
             #checks if alive
             if c.alive==True:
                 for i in range(reproductionrate):
                     allnewchances.append(po.newchances(c.weights, mutationrate=mutationrate))
+                    newamp,newvs,newctr=po.newattr(c.amplitude,c.visionstrength,c.chancetoreact,mutationrate)
+                    allnewamps.append(newamp)
+                    allnewvss.append(newvs)
+                    allnewctrs.append(newctr)
         chances=allnewchances
+        amps=allnewamps
+        vss=allnewvss
+        ctrs=allnewctrs
         #new number of creats
         creatnum=len(allnewchances)
-        if creatnum>creatcap: creatnum=creatcap
+        #if too many creatures, then take first 20
+        if creatnum>creatcap:
+            creatnum=creatcap
         #clears creats list
         creatures=[]
-
+    #reshape and correct null values
     meanchanceotherway=[[] for i in range(len(startingchance))]
-    devchanceotherway=[[] for i in range(len(startingchance))]
     for i in range(len(meanchances)):
         if type(meanchances[i])==np.float64: #for if all creats died
             meanchances[i]=np.array([0,0,0,0,0])
-    for i in range(len(devchances)):
-        if type(devchances[i])==np.float64:
-            devchances[i]=np.array([0,0,0,0,0])
     meanchancesreshaped=[i.reshape(len(startingchance)) for i in meanchances]
-    devchancesreshaped=[i.reshape(len(startingchance)) for i in devchances]
     for i in range(len(startingchance)):
         for j in range(len(meanchancesreshaped)):
             meanchanceotherway[i].append(meanchancesreshaped[j][i])
-            devchanceotherway[i].append(devchancesreshaped[j][i])
-
-    pf.sumplots(meanchanceotherway, devchanceotherway, meanstepssurvived ,devstepssurvived , numberofcreats)
+    for i in meanamp:
+        if i>=0: pass
+        else: i=0
+    for i in meanvs:
+        if i>=0: pass
+        else: i=0
+    for i in meanctr:
+        if i>=0: pass
+        else: i=0
+    pf.sumplots(meanchanceotherway, meanstepssurvived, devstepssurvived, meanamp, meanvs, meanctr, numberofcreats)
 
     plt.tight_layout()
     plt.savefig('Summary Plot')
