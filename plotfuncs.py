@@ -45,9 +45,9 @@ def sumplots(meanchanceotherway, meanstepssurvived,devstepssurvived, meanamp, me
 
     axis[0,0].set_ylabel('Weight')
     axis[0,0].set_title('Average Weights')
-    axis[0,1].set_title('Standard Deviation')
+    axis[0,1].set_title('Amplitude and Vision Strength')
+    axis[0,1].set_ylabel('Distance')
     axis[0,0].set_ylim((0,1))
-    axis[0,1].set_ylim((0,1))
     axis[1,0].set_ylabel('Steps Survived')
     axis[1,0].set_title('Mean Steps Survived')
     axis[1,1].set_ylabel('Number of Creatures')
