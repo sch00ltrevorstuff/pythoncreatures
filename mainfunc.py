@@ -7,6 +7,50 @@ import passon as po
 import plotfuncs as pf
 import checksurvivearea as csa
 import sight
+from multiprocessing import Pool
+
+def simcreat(c,chances,amps,vss,ctrs,maxx,maxy,minx,miny,validpoints,randomstart,steps):
+            #creates list of objects of class Creat and gives number
+            creature=crc.Creat(c)
+            #assigns weights and traits to the creatures
+            creature.chances(weight=chances[c])
+            creature.amplitude=amps[c]
+            creature.visionstrength=vss[c]
+            creature.chancetoreact=ctrs[c]
+            stepssurvivedcount=0
+            if randomstart:
+                creature.xtrack[0]=np.random.randint(-maxx,maxx+1)
+                creature.ytrack[0]=np.random.randint(-maxy,maxy+1)
+
+            for s in range(steps):
+                print("Simulating step: " + str(s) + "\t for creature " + str(c), end='\r')
+                #start step at last step's last position
+                xpos=creature.xtrack[s]
+                ypos=creature.ytrack[s]
+                #if still alive, if dead stays put
+                if creature.alive==True:
+                    #assigns weights and chooses move function
+                    #using vision strength to look for danger, then react
+                    detections=sight.looking(creature.visionstrength,xpos,ypos,maxx,minx,maxy,miny,validpoints)
+                    reactweights=sight.react(creature.chancetoreact,creature.weights, detections, xpos, ypos,maxx,minx,maxy,miny)
+                    movefunc=mf.funcchoose(reactweights)(creature.amplitude, xpos, ypos)
+                    #the point to check if allowed
+                    pointcheck=[movefunc[0], movefunc[1]]
+                    #checks if went to not allowed point, if so then dies and stays put, else then move
+                    if pointcheck not in validpoints:
+                        creature.death()
+                        creature.changex(xpos)
+                        creature.changey(ypos)
+                    else:
+                        creature.survive()
+                        stepssurvivedcount+=1
+                        creature.changex(movefunc[0])
+                        creature.changey(movefunc[1])
+                else:
+                    creature.death()
+                    creature.changex(xpos)
+                    creature.changey(ypos)
+            return [creature, stepssurvivedcount]
 
 def movementsimfunc(maxx=30,minx=-30,maxy=30,miny=-30,startcreatnum=1,steps=300,generations=21,mutationrate=.15,reproductionrate=2,
                     graphcheck=5,startingchance=[.2,.2,.2,.2,.2],startingamplitude=1,startingvisionstrength=0,
@@ -52,7 +96,7 @@ def movementsimfunc(maxx=30,minx=-30,maxy=30,miny=-30,startcreatnum=1,steps=300,
     for g in range(generations):
         print('------------------------------------------------------------------------------------------------------------')
         print("".join(["Now starting generation ", str(g)]))
-        gensurvivors=creatnum
+        gensurvivors=0
 
         numberofcreats.append(creatnum)
         #to keep track of when creatures die
@@ -61,50 +105,19 @@ def movementsimfunc(maxx=30,minx=-30,maxy=30,miny=-30,startcreatnum=1,steps=300,
         #creates list of allowed points
         invalidpoints=csa.invalidsubzones(verts)
         validpoints=csa.validzones(maxx, minx, maxy, miny, invalidpoints)
-
-        for c in range(creatnum):
-            #creates list of objects of class Creat and gives number
-            creatures.append(crc.Creat(c))
-            #assigns weights and traits to the creatures
-            creatures[c].chances(weight=chances[c])
-            creatures[c].amplitude=amps[c]
-            creatures[c].visionstrength=vss[c]
-            creatures[c].chancetoreact=ctrs[c]
-            stepssurvived.append(0)
-            if randomstart:
-                creatures[c].xtrack[0]=np.random.randint(-maxx,maxx+1)
-                creatures[c].ytrack[0]=np.random.randint(-maxy,maxy+1)
-
-            for s in range(steps):
-                print("Simulating step: " + str(s) + "\t for creature " + str(c), end='\r')
-                #start step at last step's last position
-                xpos=creatures[c].xtrack[s]
-                ypos=creatures[c].ytrack[s]
-                #if still alive, if dead stays put
-                if creatures[c].alive==True:
-                    #assigns weights and chooses move function
-                    #using vision strength to look for danger, then react
-                    detections=sight.looking(creatures[c].visionstrength,xpos,ypos,maxx,minx,maxy,miny,validpoints)
-                    reactweights=sight.react(creatures[c].chancetoreact,creatures[c].weights, detections, xpos, ypos,maxx,minx,maxy,miny)
-                    movefunc=mf.funcchoose(reactweights)(creatures[c].amplitude, xpos, ypos)
-                    #the point to check if allowed
-                    pointcheck=[movefunc[0], movefunc[1]]
-                    #checks if went to not allowed point, if so then dies and stays put, else then move
-                    if pointcheck not in validpoints:
-                        creatures[c].death()
-                        gensurvivors=gensurvivors-1
-                        creatures[c].changex(xpos)
-                        creatures[c].changey(ypos)
-                    else:
-                        creatures[c].survive()
-                        stepssurvived[c]+=1
-                        creatures[c].changex(movefunc[0])
-                        creatures[c].changey(movefunc[1])
-                else:
-                    creatures[c].death()
-                    creatures[c].changex(xpos)
-                    creatures[c].changey(ypos)
-
+        ###########################################################################################################
+        ###########################################################################################################
+        ###########################################################################################################
+        params=[[c,chances,amps,vss,ctrs,maxx,maxy,minx,miny,validpoints,randomstart,steps] for c in np.arange(creatnum)]
+        with Pool() as pool:
+            results=pool.starmap(simcreat, params)
+        creatures=[r[0] for r in results]
+        stepssurvived=[r[1] for r in results]
+        for s in stepssurvived:
+            if s==300: gensurvivors+=1
+        ###########################################################################################################
+        ###########################################################################################################
+        ###########################################################################################################
         print("".join(["The average weights for generation ", str(g), " are ", str(np.mean(chances, axis=0))]))
         print("".join(["The average weights for generation ", str(g), " are Amp: ", str(np.mean(amps)), " VS: ", str(np.mean(vss)), " CTR: ", str(np.mean(ctrs))]))
         print("".join(["Survivors of this generation: ", str(gensurvivors), "/", str(creatnum)]))
